@@ -80,6 +80,7 @@ mod BitBridgePay {
         pub settled: bool,
         pub expires_at: u64,
         pub btc_block_height: u64,
+        pub cancelled: bool,
     }
 
     #[event]
@@ -87,7 +88,9 @@ mod BitBridgePay {
     pub enum Event {
         PaymentCreated: PaymentCreated,
         PaymentSettled: PaymentSettled,
+        PaymentCancelled: PaymentCancelled,
     }
+
 
     #[derive(Drop, starknet::Event)]
     pub struct PaymentCreated {
@@ -107,11 +110,20 @@ mod BitBridgePay {
         pub amount_settlement_units: u256,
         pub btc_txid: felt252,
     }
+    #[derive(Drop, starknet::Event)]
+    pub struct PaymentCancelled {
+        #[key]
+        pub payment_id: felt252,
+    }
 
     #[constructor]
     fn constructor(
-        ref self: ContractState, attestor: ContractAddress, oracle_address: ContractAddress,
+        ref self: ContractState,
+        attestor: ContractAddress,
+        oracle_address: ContractAddress,
+        owner: ContractAddress,
     ) {
+        self.owner.write(owner);
         self.attestor.write(attestor);
         self.oracle_address.write(oracle_address);
     }
@@ -152,6 +164,10 @@ mod BitBridgePay {
             let caller = get_caller_address();
             assert(caller == payment.merchant || caller == self.owner.read(), 'unauthorized');
             // mark as cancelled / delete entry
+            let mut payment = self.payments.entry(payment_id).read();
+            payment.cancelled = true;
+            self.payments.entry(payment_id).write(payment);
+            self.emit(PaymentCancelled { payment_id });
         }
         fn set_attestor(ref self: ContractState, new_attestor: ContractAddress) {
             assert(get_caller_address() == self.owner.read(), 'owner_only');
@@ -200,6 +216,7 @@ mod BitBridgePay {
                         settled: false,
                         expires_at: now + PAYMENT_TTL,
                         btc_block_height: 0,
+                        cancelled: false,
                     },
                 );
 
@@ -230,6 +247,7 @@ mod BitBridgePay {
             assert(!payment.settled, 'already_settled');
             assert(btc_amount_sats >= payment.required_btc_sats, 'btc_below_required');
             assert(now <= payment.expires_at, 'payment_expired');
+            assert(!payment.cancelled, 'payment_cancelled');
             // validate minimum confirmations before anything else
             const MIN_CONFIRMATIONS: u64 = 6_u64;
             let current_block = starknet::get_block_number();
@@ -305,7 +323,9 @@ mod BitBridgePay {
         }
 
         fn _get_payment_or_panic(self: @ContractState, payment_id: felt252) -> Payment {
-            self.payments.entry(payment_id).read()
+            let payment = self.payments.entry(payment_id).read();
+            assert(payment.initialized, 'no_payment');
+            payment
         }
     }
 
