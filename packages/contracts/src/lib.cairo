@@ -31,14 +31,15 @@ trait IBitBridgePay<TContractState> {
 
 #[starknet::contract]
 mod BitBridgePay {
+    use core::integer::u256;
     use core::traits::Into;
-    use integer::u256;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address};
     const MAX_STALENESS: u64 = 3600_u64;
     const PAYMENT_TTL: u64 = 86400_u64; // 24 hours in seconds
+    const MIN_BTC_CONFIRMATIONS: u64 = 6_u64; // enforced off-chain for now, used in 1.3
 
     // ABI-compatible with Pragma oracle (so we can call get_data_median without pragma_lib
     // dependency).
@@ -114,6 +115,7 @@ mod BitBridgePay {
     pub struct PaymentCancelled {
         #[key]
         pub payment_id: felt252,
+        pub merchant: ContractAddress,
     }
 
     #[constructor]
@@ -155,19 +157,20 @@ mod BitBridgePay {
         }
         // Allow cancellation of payment
         fn cancel_payment(ref self: ContractState, payment_id: felt252) {
-            let payment = self.payments.entry(payment_id).read();
+            let mut payment = self.payments.entry(payment_id).read();
             assert(payment.initialized, 'no_payment');
             assert(!payment.settled, 'already_settled');
+            assert(!payment.cancelled, 'already_cancelled');
             let now = starknet::get_block_timestamp();
             assert(now > payment.expires_at, 'not_expired_yet');
             // only merchant or owner can cancel
             let caller = get_caller_address();
             assert(caller == payment.merchant || caller == self.owner.read(), 'unauthorized');
-            // mark as cancelled / delete entry
-            let mut payment = self.payments.entry(payment_id).read();
+            // mark as cancelled
+            let merchant = payment.merchant;
             payment.cancelled = true;
             self.payments.entry(payment_id).write(payment);
-            self.emit(PaymentCancelled { payment_id });
+            self.emit(PaymentCancelled { payment_id, merchant });
         }
         fn set_attestor(ref self: ContractState, new_attestor: ContractAddress) {
             assert(get_caller_address() == self.owner.read(), 'owner_only');
@@ -249,11 +252,10 @@ mod BitBridgePay {
             assert(now <= payment.expires_at, 'payment_expired');
             assert(!payment.cancelled, 'payment_cancelled');
             // validate minimum confirmations before anything else
-            const MIN_CONFIRMATIONS: u64 = 6_u64;
-            let current_block = starknet::get_block_number();
-            assert(
-                current_block >= btc_block_height + MIN_CONFIRMATIONS, 'insufficient_confirmations',
-            );
+            // NOTE: BTC confirmation depth is enforced off-chain by the attestor.
+            // btc_block_height is stored for auditability.
+            // On-chain confirmation validation requires attestor to pass current BTC
+            // chain tip as a parameter — deferred to Milestone 1.3.
             let merchant = payment.merchant;
             // Get prices from Pragma oracle (on-chain only for settlement)
             let amount_settlement_units = self
