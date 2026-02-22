@@ -1,0 +1,13 @@
+[package]
+name = "bitbridge_contracts"
+version = "0.1.0"
+edition = "2024_07"
+description = "BitBridge Pay Starknet contracts"
+
+[dependencies]
+starknet = ">=2.6.0"
+
+[[target.starknet-contract]]
+
+[tool.snforge]
+exit_first = true
