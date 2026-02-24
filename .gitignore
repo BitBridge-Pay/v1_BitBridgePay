@@ -2,3 +2,5 @@ masterplan.md
 product_architecture.md
 node_modules
 target
+.env
+.env.local

@@ -1,0 +1,3 @@
+[sncast.bitbridge_deployer]
+account = "bitbridge_deployer"
+url = "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/L2Zp6tz7tt79WWh45qHuS"

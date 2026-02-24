@@ -9,7 +9,7 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-trait IBitBridgePay<TContractState> {
+pub trait IBitBridgePay<TContractState> {
     fn create_payment(
         ref self: TContractState,
         merchant: ContractAddress,

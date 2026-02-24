@@ -7,6 +7,9 @@ description = "BitBridge Pay Starknet contracts"
 [dependencies]
 starknet = ">=2.6.0"
 
+[dev-dependencies]
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.55.0" }
+
 [[target.starknet-contract]]
 
 [tool.snforge]

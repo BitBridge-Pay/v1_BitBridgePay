@@ -2,9 +2,16 @@
   "name": "relayer",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "starknet": "^6.11.0",
+    "axios": "^1.7.0",
+    "dotenv": "^16.0.0"
   },
   "keywords": [],
   "author": "",
