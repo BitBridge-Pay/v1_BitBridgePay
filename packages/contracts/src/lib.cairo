@@ -46,7 +46,7 @@ trait IBitBridgePay<TContractState> {
 #[starknet::contract]
 mod BitBridgePay {
     use core::integer::u256;
-    use core::traits::Into;
+    use core::traits::{Into, TryInto};
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
@@ -228,9 +228,8 @@ mod BitBridgePay {
             assert(!payment.cancelled, 'already_cancelled');
 
             let caller = get_caller_address();
-            if caller == payment.merchant {
-                // Merchant can cancel their own payment at any time — pre- or post-expiry.
-                // Useful when a wrong BTC address was given or the customer won't pay.
+            if caller == payment.merchant {// Merchant can cancel their own payment at any time — pre- or post-expiry.
+            // Useful when a wrong BTC address was given or the customer won't pay.
             } else {
                 // Non-merchant callers (e.g. owner doing cleanup) may only cancel after expiry.
                 assert(caller == self.owner.read(), 'unauthorized');
@@ -258,7 +257,10 @@ mod BitBridgePay {
             let caller = get_caller_address();
             assert(caller == self.owner.read(), 'owner_only');
             self.pending_owner.write(new_owner);
-            self.emit(OwnershipTransferProposed { current_owner: caller, proposed_owner: new_owner });
+            self
+                .emit(
+                    OwnershipTransferProposed { current_owner: caller, proposed_owner: new_owner },
+                );
         }
 
         /// Step 2: proposed owner accepts. Only they can call this.
@@ -269,7 +271,8 @@ mod BitBridgePay {
             let old_owner = self.owner.read();
             self.owner.write(caller);
             // Clear pending so accept can't be replayed.
-            self.pending_owner.write(starknet::contract_address_const::<0>());
+            let zero: ContractAddress = (0_felt252).try_into().unwrap();
+            self.pending_owner.write(zero);
             self.emit(OwnershipTransferred { old_owner, new_owner: caller });
         }
 
