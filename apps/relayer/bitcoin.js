@@ -1,21 +1,61 @@
 import axios from "axios";
-// Returns the total confirmed sats received at an address
-// (sum of all UTXOs with >= minConfirmations)
-export async function getConfirmedStats(address, apiUrl, minConfirmations) {
-  try {
-    if (!address || !apiUrl || !minConfirmations) {
-      throw new Error(
-        "Missing required parameters: address, apiUrl, or minConfirmations"
-      );
+
+// ---------------------------------------------------------------------------
+// Internal fetch helpers
+// ---------------------------------------------------------------------------
+
+// Xverse API uses a /v1/bitcoin/ path prefix and requires an x-api-key header.
+async function fetchFromXverse(config, address) {
+  const base = config.xverseApiUrl;
+  const headers = { "x-api-key": config.xverseApiKey };
+  const [utxoRes, tipRes] = await Promise.all([
+    axios.get(`${base}/v1/bitcoin/address/${address}/utxo`, { headers }),
+    axios.get(`${base}/v1/bitcoin/blocks/tip/height`, { headers }),
+  ]);
+  return {
+    utxos: utxoRes.data,
+    tipHeight: parseInt(tipRes.data, 10),
+  };
+}
+
+// Blockstream API — no auth, path directly off the base URL.
+async function fetchFromBlockstream(config, address) {
+  const base = config.blockstreamApiUrl;
+  const [utxoRes, tipRes] = await Promise.all([
+    axios.get(`${base}/address/${address}/utxo`),
+    axios.get(`${base}/blocks/tip/height`),
+  ]);
+  return {
+    utxos: utxoRes.data,
+    tipHeight: parseInt(tipRes.data, 10),
+  };
+}
+
+// Try Xverse first (when API key is configured); fall back to Blockstream.
+async function fetchBitcoinData(config, address) {
+  if (config.xverseApiKey) {
+    try {
+      return await fetchFromXverse(config, address);
+    } catch (_) {
+      // Xverse unavailable — fall through to Blockstream
     }
-    // 1. Fetch current block tip height
-    const tipRes = await axios.get(`${apiUrl}/blocks/tip/height`);
-    const tipHeight = parseInt(tipRes.data, 10);
-    // 2. Fetch UTXOs for the address
-    const utxoRes = await axios.get(`${apiUrl}/address/${address}/utxo`);
-    // 3. Sum confirmed sats
+  }
+  return await fetchFromBlockstream(config, address);
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the total confirmed sats received at an address
+ * (sum of all UTXOs with >= minConfirmations).
+ */
+export async function getConfirmedStats(address, config, minConfirmations) {
+  try {
+    const { utxos, tipHeight } = await fetchBitcoinData(config, address);
     let totalSats = 0n;
-    for (const utxo of utxoRes.data) {
+    for (const utxo of utxos) {
       if (!utxo.status.confirmed) continue;
       const confirmations = tipHeight - utxo.status.block_height + 1;
       if (confirmations >= minConfirmations) {
@@ -27,19 +67,20 @@ export async function getConfirmedStats(address, apiUrl, minConfirmations) {
     throw new Error(`Bitcoin API error: ${error.message}`);
   }
 }
-// "Has a specific payment arrived and is it confirmed enough to attest?"
+
+/**
+ * Returns the first UTXO that meets the required confirmation depth and
+ * satoshi amount, or null if no such UTXO exists yet.
+ */
 export async function findConfirmedPayment(
   address,
   minConfirmations,
   requiredSats,
-  apiUrl
+  config
 ) {
   try {
-    const utxoRes = await axios.get(`${apiUrl}/address/${address}/utxo`);
-    const tipRes = await axios.get(`${apiUrl}/blocks/tip/height`);
-    const tipHeight = parseInt(tipRes.data, 10);
-
-    for (const utxo of utxoRes.data) {
+    const { utxos, tipHeight } = await fetchBitcoinData(config, address);
+    for (const utxo of utxos) {
       if (!utxo.status.confirmed) continue;
       const confirmations = tipHeight - utxo.status.block_height + 1;
       if (
@@ -53,11 +94,15 @@ export async function findConfirmedPayment(
         };
       }
     }
-    return null; // No confirmed payment found
+    return null;
   } catch (error) {
     throw new Error(`Bitcoin API error: ${error.message}`);
   }
 }
+
+/**
+ * Convert a 64-char hex Bitcoin txid to a u256 { low, high } for the contract.
+ */
 export function txidToU256(txid) {
   if (!txid || typeof txid !== "string" || txid.length !== 64) {
     throw new Error("Invalid Bitcoin transaction ID");
