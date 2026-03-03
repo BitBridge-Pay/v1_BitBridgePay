@@ -1,10 +1,16 @@
 {
   "name": "web",
   "version": "1.0.0",
-  "description": "",
+  "description": "BitBridge Pay frontend",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "bitcoinjs-lib": "^6.1.0",
+    "bip32": "^4.0.0",
+    "tiny-secp256k1": "^2.2.0"
   },
   "keywords": [],
   "author": "",

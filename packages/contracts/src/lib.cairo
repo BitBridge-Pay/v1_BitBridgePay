@@ -17,6 +17,7 @@ pub trait IBitBridgePay<TContractState> {
         payment_id: felt252,
         btc_address: felt252,
         required_btc_sats: u64,
+        is_private: bool,
     );
     fn submit_attestation(
         ref self: TContractState,
@@ -117,6 +118,8 @@ mod BitBridgePay {
         pub cancelled: bool,
         /// The Bitcoin transaction id that settled this payment. Zero until settled.
         pub btc_txid: u256,
+        /// When true, the settlement event hides the transferred amount for merchant privacy.
+        pub is_private: bool,
     }
 
     #[event]
@@ -138,6 +141,7 @@ mod BitBridgePay {
         pub btc_address: felt252,
         pub required_btc_sats: u64,
         pub amount_settlement_units: u128,
+        pub is_private: bool,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -204,10 +208,11 @@ mod BitBridgePay {
             payment_id: felt252,
             btc_address: felt252,
             required_btc_sats: u64,
+            is_private: bool,
         ) {
             self
                 ._create_payment(
-                    merchant, amount_settlement_units, payment_id, btc_address, required_btc_sats,
+                    merchant, amount_settlement_units, payment_id, btc_address, required_btc_sats, is_private,
                 );
         }
 
@@ -323,6 +328,7 @@ mod BitBridgePay {
             payment_id: felt252,
             btc_address: felt252,
             required_btc_sats: u64,
+            is_private: bool,
         ) {
             // Only the merchant wallet may open a payment on their own behalf.
             // Prevents griefing: a third party cannot pre-fill payment IDs for a merchant
@@ -350,6 +356,7 @@ mod BitBridgePay {
                         btc_block_height: 0,
                         cancelled: false,
                         btc_txid: u256 { low: 0, high: 0 },
+                        is_private,
                     },
                 );
 
@@ -361,6 +368,7 @@ mod BitBridgePay {
                         btc_address,
                         required_btc_sats,
                         amount_settlement_units,
+                        is_private,
                     },
                 );
         }
@@ -388,6 +396,7 @@ mod BitBridgePay {
             // the current BTC chain tip as a parameter.
 
             let merchant = payment.merchant;
+            let is_private = payment.is_private;
             let amount_settlement_units = self
                 ._compute_settlement_amount_from_oracle(btc_amount_sats);
             let slippage_floor: u256 = (payment.amount_settlement_units * 95_u128 / 100_u128)
@@ -399,10 +408,20 @@ mod BitBridgePay {
             payment.btc_txid = btc_txid;
             self.payments.entry(payment_id).write(payment);
 
-            self.emit(PaymentSettled { payment_id, merchant, amount_settlement_units, btc_txid });
+            // When private, hide the settlement amount from on-chain observers.
+            let emitted_amount = if is_private {
+                0_u256
+            } else {
+                amount_settlement_units
+            };
+            self
+                .emit(
+                    PaymentSettled {
+                        payment_id, merchant, amount_settlement_units: emitted_amount, btc_txid,
+                    },
+                );
 
-            // Release settlement token to merchant. Contract must hold sufficient balance
-            // (funded off-chain before any payment is created).
+            // Release settlement token to merchant (always uses real amount).
             let token = self.settlement_token.read();
             let dispatcher = ISettlementTokenDispatcher { contract_address: token };
             dispatcher.transfer(merchant, amount_settlement_units);

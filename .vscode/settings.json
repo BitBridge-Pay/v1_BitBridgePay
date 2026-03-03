@@ -4,5 +4,6 @@
   },
   "cairo1.languageServerExtraEnv": {
     "RUSTUP_TOOLCHAIN": "1.89.0"
-  }
+  },
+  "cairo1.scarbPath": "/Users/lynettemwangi/.asdf/installs/scarb/2.12.2/bin/scarb"
 }

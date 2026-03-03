@@ -37,12 +37,14 @@ const PAYMENT_CREATED_KEY = hash.getSelectorFromName("PaymentCreated");
 //   data[1]  = btc_address (felt252 short-string)
 //   data[2]  = required_btc_sats (u64)
 //   data[3]  = amount_settlement_units (u128) — not needed by relayer
+//   data[4]  = is_private  (bool) — not needed by relayer
 function parsePaymentCreated(event) {
   const paymentId = event.keys[1];
   const merchant = event.data[0];
   const btcAddress = shortString.decodeShortString(event.data[1]);
   const requiredSats = BigInt(event.data[2]);
-  return { paymentId, merchant, btcAddress, requiredSats };
+  const isPrivate = event.data[4] === "0x1";
+  return { paymentId, merchant, btcAddress, requiredSats, isPrivate };
 }
 
 // Starknet polling loop
@@ -71,13 +73,13 @@ async function pollStarknetEvents() {
     });
 
     for (const event of response.events) {
-      const { paymentId, merchant, btcAddress, requiredSats } =
+      const { paymentId, merchant, btcAddress, requiredSats, isPrivate } =
         parsePaymentCreated(event);
 
       // Skip payments already tracked (idempotent on restart).
       if (!openPayments.has(paymentId)) {
         openPayments.set(paymentId, { btcAddress, requiredSats, merchant });
-        log("SEEN", `New payment`, {
+        log("SEEN", `New payment${isPrivate ? " (private)" : ""}`, {
           paymentId,
           btcAddress,
           requiredSats: requiredSats.toString(),
