@@ -1,7 +1,9 @@
 import { hash, byteArray } from "starknet";
+import { createServer } from "node:http";
 import { readEnv } from "./config.js";
 import { findConfirmedPayment } from "./bitcoin.js";
 import { submitAttestation } from "./starknet.js";
+import { getStealthAddress } from "./stealth.js";
 
 const config = readEnv();
 
@@ -182,6 +184,58 @@ async function pollBitcoin() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// HTTP API — exposes stealth address derivation to the frontend.
+// Private keys never leave the relayer process.
+// ---------------------------------------------------------------------------
+
+function startApiServer() {
+  const server = createServer((req, res) => {
+    const url = new URL(req.url, `http://localhost`);
+
+    // CORS — allow the frontend origin in dev and prod.
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    // GET /api/stealth-address?merchant=0x...&index=0
+    if (req.method === "GET" && url.pathname === "/api/stealth-address") {
+      const merchant = url.searchParams.get("merchant");
+      const index = parseInt(url.searchParams.get("index") ?? "0", 10);
+
+      if (!merchant || isNaN(index) || index < 0) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "merchant and index are required" }));
+        return;
+      }
+
+      try {
+        const { address, path } = getStealthAddress(config, merchant, index);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ address, index, path }));
+        log("API", `Served stealth address`, { merchant, index, address });
+      } catch (err) {
+        log("API_ERR", `Failed to derive stealth address`, { error: err.message });
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "internal error" }));
+      }
+      return;
+    }
+
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "not found" }));
+  });
+
+  server.listen(config.relayerPort, () => {
+    log("STARTUP", `API server listening on port ${config.relayerPort}`);
+  });
+}
+
 async function main() {
   log("STARTUP", "BitBridge Pay relayer starting", {
     network: config.network,
@@ -190,6 +244,8 @@ async function main() {
     btcPollIntervalMs: config.btcPollIntervalMs,
     btcMinConfirmations: config.btcMinConfirmations,
   });
+
+  startApiServer();
 
   // Starknet event polling — runs on its own independent interval.
   (async function starknetLoop() {

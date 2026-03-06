@@ -1,113 +1,47 @@
 /**
- * BitBridge Pay — Stealth Bitcoin Address Derivation (Tier 2.1)
+ * BitBridge Pay — Stealth Address Client
  *
- * Every payment gets a unique Bitcoin address derived deterministically from:
- *   seed  = sha256(merchant_starknet_address + contract_address)
- *   path  = m/44'/0'/0'/0/{payment_index}
+ * The stealth address private key is held exclusively by the relayer
+ * (derived using STEALTH_MASTER_SECRET). This file only fetches the
+ * public Bitcoin address from the relayer API — the private key never
+ * leaves the relayer process.
  *
- * Benefits:
- *   - Merchant's real Bitcoin address is never exposed on-chain or in any payment.
- *   - Payments cannot be linked to each other or to the merchant by an observer.
- *   - Merchant can recover all stealth addresses from their Starknet address + contract address.
- *   - No contract changes needed — contract already stores whatever BTC address is provided.
- *   - Relayer watches stealth addresses exactly as it watches any BTC address.
- *
- * NOTE: The contract stores btc_address as felt252 (max 31 ASCII bytes).
- * Real bech32 addresses (42+ chars) exceed this limit. For production, the contract
- * should be updated to use ByteArray or multiple felt252 fields. For the hackathon
- * demo, we truncate to 31 chars (the relayer can re-derive the full address from
- * the deterministic params).
- *
- * Dependencies: bitcoinjs-lib, bip32, tiny-secp256k1 (browser-compatible via Vite).
+ * Privacy model:
+ *   - Each payment gets a unique Bitcoin address → payments are unlinkable
+ *     to casual on-chain observers.
+ *   - The merchant reconciles via Starknet events (PaymentCreated/PaymentSettled),
+ *     not by re-deriving Bitcoin addresses.
+ *   - Only the relayer can spend from stealth addresses (needed for refunds).
  */
 
-import * as bitcoin from "bitcoinjs-lib";
-import BIP32Factory from "bip32";
-import * as ecc from "tiny-secp256k1";
-
-const bip32 = BIP32Factory(ecc);
+const RELAYER_URL = import.meta.env.VITE_RELAYER_URL ?? "http://localhost:3001";
 
 /**
- * Browser-compatible SHA-256 hash.
- * Uses the Web Crypto API (SubtleCrypto) which is available in all modern browsers.
+ * Fetch a stealth Bitcoin address for a payment from the relayer.
  *
- * @param {string} input - UTF-8 string to hash
- * @returns {Promise<Uint8Array>} 32-byte hash
+ * @param {string} merchantAddress - Merchant's Starknet address (hex)
+ * @param {number} paymentIndex    - Sequential index for this merchant (0-based)
+ * @returns {Promise<{ address: string, index: number, path: string }>}
  */
-async function sha256(input) {
-  const data = new TextEncoder().encode(input);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return new Uint8Array(hashBuffer);
-}
-
-/**
- * Derive a deterministic stealth Bitcoin address for a payment.
- *
- * @param {string} merchantStarknetAddress - Merchant's Starknet address (hex, e.g. "0x037d...")
- * @param {string} contractAddress - BitBridgePay contract address (hex)
- * @param {number} paymentIndex - Sequential payment index for this merchant (0-based)
- * @param {"testnet" | "mainnet"} [network="testnet"]
- * @returns {Promise<{ address: string, publicKey: string, path: string }>}
- */
-export async function deriveStealthAddress(
-  merchantStarknetAddress,
-  contractAddress,
-  paymentIndex,
-  network = "testnet"
-) {
-  // 1. Build deterministic seed from merchant + contract identity
-  const preimage =
-    merchantStarknetAddress.toLowerCase() + contractAddress.toLowerCase();
-  const seed = await sha256(preimage);
-  // sha256 returns 32 bytes — valid for BIP32 fromSeed (accepts 16–64 bytes)
-
-  // 2. Derive HD key at standard BIP44 path
-  const root = bip32.fromSeed(Buffer.from(seed));
-  const path = `m/44'/0'/0'/0/${paymentIndex}`;
-  const child = root.derivePath(path);
-
-  // 3. Generate native SegWit (bech32) address
-  const btcNetwork =
-    network === "mainnet" ? bitcoin.networks.bitcoin : bitcoin.networks.testnet;
-
-  const { address } = bitcoin.payments.p2wpkh({
-    pubkey: Buffer.from(child.publicKey),
-    network: btcNetwork,
-  });
-
-  return {
-    address,
-    publicKey: Buffer.from(child.publicKey).toString("hex"),
-    path,
-  };
-}
-
-/**
- * Recover all stealth addresses for a merchant.
- * Used to list/reconcile all payment addresses from the merchant's Starknet identity.
- *
- * @param {string} merchantStarknetAddress
- * @param {string} contractAddress
- * @param {number} count - Number of addresses to derive (0 to count-1)
- * @param {"testnet" | "mainnet"} [network="testnet"]
- * @returns {Promise<Array<{ address: string, publicKey: string, path: string, index: number }>>}
- */
-export async function recoverStealthAddresses(
-  merchantStarknetAddress,
-  contractAddress,
-  count,
-  network = "testnet"
-) {
-  const addresses = [];
-  for (let i = 0; i < count; i++) {
-    const result = await deriveStealthAddress(
-      merchantStarknetAddress,
-      contractAddress,
-      i,
-      network
-    );
-    addresses.push({ ...result, index: i });
+export async function deriveStealthAddress(merchantAddress, paymentIndex) {
+  const url = `${RELAYER_URL}/api/stealth-address?merchant=${encodeURIComponent(merchantAddress)}&index=${paymentIndex}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(`Relayer error: ${body.error ?? res.statusText}`);
   }
-  return addresses;
+  return res.json(); // { address, index, path }
 }
 
+/**
+ * Fetch multiple stealth addresses for a merchant (e.g. for history display).
+ *
+ * @param {string} merchantAddress
+ * @param {number} count - How many addresses to fetch (indices 0..count-1)
+ * @returns {Promise<Array<{ address: string, index: number, path: string }>>}
+ */
+export async function fetchStealthAddresses(merchantAddress, count) {
+  return Promise.all(
+    Array.from({ length: count }, (_, i) => deriveStealthAddress(merchantAddress, i))
+  );
+}
