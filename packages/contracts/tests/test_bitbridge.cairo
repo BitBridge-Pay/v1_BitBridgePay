@@ -149,7 +149,6 @@ fn ZERO() -> ContractAddress {
 const BTC_USD: felt252 = 'BTC/USD';
 const STRK_USD: felt252 = 'STRK/USD';
 const PAYMENT_ID: felt252 = 'pay_001';
-const BTC_ADDR: felt252 = 'bc1q_test_btc_address';
 const NOW: u64 = 1000000;
 
 // ---------------------------------------------------------------------------
@@ -241,7 +240,7 @@ fn deploy_bitbridge_strk() -> (
 // ---------------------------------------------------------------------------
 fn create_test_payment(dispatcher: IBitBridgePayDispatcher) {
     start_cheat_caller_address(dispatcher.contract_address, MERCHANT());
-    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, BTC_ADDR, 100_000_u64, false);
+    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, "bc1q_test_btc_address", 100_000_u64, false);
     stop_cheat_caller_address(dispatcher.contract_address);
 }
 
@@ -269,7 +268,7 @@ fn test_create_payment_success() {
     assert(p.initialized, 'not initialized');
     assert(p.merchant == MERCHANT(), 'wrong merchant');
     assert(p.amount_settlement_units == 100_000000_u128, 'wrong amount');
-    assert(p.btc_address == BTC_ADDR, 'wrong btc addr');
+    assert(p.btc_address == "bc1q_test_btc_address", 'wrong btc addr');
     assert(p.required_btc_sats == 100_000_u64, 'wrong req sats');
     assert(!p.settled, 'should not be settled');
     assert(!p.cancelled, 'should not be cancelled');
@@ -281,7 +280,7 @@ fn test_create_payment_success() {
 fn test_create_payment_wrong_caller() {
     let (dispatcher, _, _) = deploy_bitbridge_usdc();
     start_cheat_caller_address(dispatcher.contract_address, ALICE());
-    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, BTC_ADDR, 100_000_u64, false);
+    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, "bc1q_test_btc_address", 100_000_u64, false);
 }
 
 #[test]
@@ -298,7 +297,7 @@ fn test_create_payment_duplicate_id() {
 fn test_create_payment_zero_amount() {
     let (dispatcher, _, _) = deploy_bitbridge_usdc();
     start_cheat_caller_address(dispatcher.contract_address, MERCHANT());
-    dispatcher.create_payment(MERCHANT(), 0_u128, PAYMENT_ID, BTC_ADDR, 100_000_u64, false);
+    dispatcher.create_payment(MERCHANT(), 0_u128, PAYMENT_ID, "bc1q_test_btc_address", 100_000_u64, false);
 }
 
 #[test]
@@ -306,7 +305,7 @@ fn test_create_payment_zero_amount() {
 fn test_create_payment_zero_btc_sats() {
     let (dispatcher, _, _) = deploy_bitbridge_usdc();
     start_cheat_caller_address(dispatcher.contract_address, MERCHANT());
-    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, BTC_ADDR, 0_u64, false);
+    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, "bc1q_test_btc_address", 0_u64, false);
 }
 
 // ===========================================================================
@@ -417,7 +416,7 @@ fn test_submit_attestation_strk() {
     let amount_settlement: u128 = expected_strk * 1_000000000000000000; // 200 STRK in base units
 
     start_cheat_caller_address(dispatcher.contract_address, MERCHANT());
-    dispatcher.create_payment(MERCHANT(), amount_settlement, PAYMENT_ID, BTC_ADDR, 100_000_u64, false);
+    dispatcher.create_payment(MERCHANT(), amount_settlement, PAYMENT_ID, "bc1q_test_btc_address", 100_000_u64, false);
     stop_cheat_caller_address(dispatcher.contract_address);
 
     let merchant_bal_before = token.balance_of(MERCHANT());
@@ -712,7 +711,7 @@ fn test_stale_token_price_strk() {
     let (dispatcher, _, oracle) = deploy_bitbridge_strk();
 
     start_cheat_caller_address(dispatcher.contract_address, MERCHANT());
-    dispatcher.create_payment(MERCHANT(), 200_000000000000000000_u128, PAYMENT_ID, BTC_ADDR, 100_000_u64, false);
+    dispatcher.create_payment(MERCHANT(), 200_000000000000000000_u128, PAYMENT_ID, "bc1q_test_btc_address", 100_000_u64, false);
     stop_cheat_caller_address(dispatcher.contract_address);
 
     // BTC price is fresh, but STRK price is stale
@@ -728,7 +727,7 @@ fn test_token_few_sources_strk() {
     let (dispatcher, _, oracle) = deploy_bitbridge_strk();
 
     start_cheat_caller_address(dispatcher.contract_address, MERCHANT());
-    dispatcher.create_payment(MERCHANT(), 200_000000000000000000_u128, PAYMENT_ID, BTC_ADDR, 100_000_u64, false);
+    dispatcher.create_payment(MERCHANT(), 200_000000000000000000_u128, PAYMENT_ID, "bc1q_test_btc_address", 100_000_u64, false);
     stop_cheat_caller_address(dispatcher.contract_address);
 
     // STRK price has too few sources
@@ -747,7 +746,7 @@ fn test_private_payment_stores_flag() {
     let (dispatcher, _, _) = deploy_bitbridge_usdc();
 
     start_cheat_caller_address(dispatcher.contract_address, MERCHANT());
-    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, BTC_ADDR, 100_000_u64, true);
+    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, "bc1q_test_btc_address", 100_000_u64, true);
     stop_cheat_caller_address(dispatcher.contract_address);
 
     let p = dispatcher.get_payment(PAYMENT_ID);
@@ -769,7 +768,7 @@ fn test_private_payment_still_transfers_tokens() {
 
     // Create a private payment
     start_cheat_caller_address(dispatcher.contract_address, MERCHANT());
-    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, BTC_ADDR, 100_000_u64, true);
+    dispatcher.create_payment(MERCHANT(), 100_000000_u128, PAYMENT_ID, "bc1q_test_btc_address", 100_000_u64, true);
     stop_cheat_caller_address(dispatcher.contract_address);
 
     let merchant_bal_before = token.balance_of(MERCHANT());

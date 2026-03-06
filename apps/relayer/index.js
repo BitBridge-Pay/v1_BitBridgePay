@@ -1,4 +1,4 @@
-import { hash, shortString } from "starknet";
+import { hash, byteArray } from "starknet";
 import { readEnv } from "./config.js";
 import { findConfirmedPayment } from "./bitcoin.js";
 import { submitAttestation } from "./starknet.js";
@@ -29,21 +29,43 @@ function log(tag, message, data = {}) {
 // Starknet event key for PaymentCreated — computed from the event name.
 const PAYMENT_CREATED_KEY = hash.getSelectorFromName("PaymentCreated");
 
+// Decode a Cairo ByteArray from raw event data starting at startIdx.
+// ByteArray on-chain layout:
+//   data[startIdx]              = n  (number of full 31-byte words)
+//   data[startIdx+1..startIdx+n] = full words (one felt252 each)
+//   data[startIdx+n+1]          = pending_word  (remaining bytes, high-aligned)
+//   data[startIdx+n+2]          = pending_word_len (byte count of pending_word)
+// Returns { value: string, consumed: number } where consumed is how many
+// data slots were read so the caller can find the next field.
+function decodeByteArray(data, startIdx) {
+  const nWords = Number(BigInt(data[startIdx]));
+  const words = data.slice(startIdx + 1, startIdx + 1 + nWords);
+  const pendingWord = data[startIdx + 1 + nWords];
+  const pendingWordLen = Number(BigInt(data[startIdx + 2 + nWords]));
+  const str = byteArray.stringFromByteArray({
+    data: words,
+    pending_word: pendingWord,
+    pending_word_len: pendingWordLen,
+  });
+  return { value: str, consumed: 3 + nWords };
+}
+
 // Parse a raw starknet.js event object into a structured payment record.
 // Event layout (from ABI):
 //   keys[0]  = event selector
-//   keys[1]  = payment_id  (felt252, kind: key → indexed)
-//   data[0]  = merchant    (ContractAddress)
-//   data[1]  = btc_address (felt252 short-string)
-//   data[2]  = required_btc_sats (u64)
-//   data[3]  = amount_settlement_units (u128) — not needed by relayer
-//   data[4]  = is_private  (bool) — not needed by relayer
+//   keys[1]  = payment_id           (felt252, kind: key → indexed)
+//   data[0]  = merchant             (ContractAddress)
+//   data[1..] = btc_address         (ByteArray — variable length)
+//   data[1+consumed]   = required_btc_sats       (u64)
+//   data[1+consumed+1] = amount_settlement_units (u128) — not needed by relayer
+//   data[1+consumed+2] = is_private              (bool)
 function parsePaymentCreated(event) {
   const paymentId = event.keys[1];
   const merchant = event.data[0];
-  const btcAddress = shortString.decodeShortString(event.data[1]);
-  const requiredSats = BigInt(event.data[2]);
-  const isPrivate = event.data[4] === "0x1";
+  const { value: btcAddress, consumed } = decodeByteArray(event.data, 1);
+  const afterAddr = 1 + consumed;
+  const requiredSats = BigInt(event.data[afterAddr]);
+  const isPrivate = event.data[afterAddr + 2] === "0x1";
   return { paymentId, merchant, btcAddress, requiredSats, isPrivate };
 }
 

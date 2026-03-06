@@ -15,7 +15,7 @@ pub trait IBitBridgePay<TContractState> {
         merchant: ContractAddress,
         amount_settlement_units: u128,
         payment_id: felt252,
-        btc_address: felt252,
+        btc_address: ByteArray,
         required_btc_sats: u64,
         is_private: bool,
     );
@@ -110,7 +110,7 @@ mod BitBridgePay {
         pub initialized: bool,
         pub merchant: ContractAddress,
         pub amount_settlement_units: u128,
-        pub btc_address: felt252,
+        pub btc_address: ByteArray,
         pub required_btc_sats: u64,
         pub settled: bool,
         pub expires_at: u64,
@@ -138,7 +138,7 @@ mod BitBridgePay {
         #[key]
         pub payment_id: felt252,
         pub merchant: ContractAddress,
-        pub btc_address: felt252,
+        pub btc_address: ByteArray,
         pub required_btc_sats: u64,
         pub amount_settlement_units: u128,
         pub is_private: bool,
@@ -206,7 +206,7 @@ mod BitBridgePay {
             merchant: ContractAddress,
             amount_settlement_units: u128,
             payment_id: felt252,
-            btc_address: felt252,
+            btc_address: ByteArray,
             required_btc_sats: u64,
             is_private: bool,
         ) {
@@ -326,7 +326,7 @@ mod BitBridgePay {
             merchant: ContractAddress,
             amount_settlement_units: u128,
             payment_id: felt252,
-            btc_address: felt252,
+            btc_address: ByteArray,
             required_btc_sats: u64,
             is_private: bool,
         ) {
@@ -341,6 +341,7 @@ mod BitBridgePay {
             assert(!existing.initialized, 'payment_id_exists');
 
             let now = starknet::get_block_timestamp();
+            let btc_address_event = btc_address.clone();
             self
                 .payments
                 .entry(payment_id)
@@ -365,7 +366,7 @@ mod BitBridgePay {
                     PaymentCreated {
                         payment_id,
                         merchant,
-                        btc_address,
+                        btc_address: btc_address_event,
                         required_btc_sats,
                         amount_settlement_units,
                         is_private,

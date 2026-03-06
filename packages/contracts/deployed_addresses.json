@@ -1,8 +1,8 @@
 {
   "sepolia": {
-    "BitBridgePay": "0x01520ced91299be32375f5eb8d12a57534cf48b87e555f9e5870ad72327e1c04",
-    "class_hash": "0x23898201403b992e7244b5833206eee399fcff41eb873b564d8f52548fdf4b2",
-    "deploy_tx": "0x042699eb1947507a7393bb45905cdaaf99766ec4cf7eb671a40e161e76854849",
+    "BitBridgePay": "0x07e9431a66a95bf9befc65836723d34faddffc9dde9b75d63e7a7a91db3f883f",
+    "class_hash": "0x24d3a81d1931fa4ff3f55e8696d3e35a275576afe27c459ceddebdc9bda883a",
+    "deploy_tx": "0x01b2380860e59b32eb7a9feea762676deae1491bd0b2a18c43c48d5dabdfc857",
     "oracle_address": "0x36031daa264c24520b11d93af622c848b2499b66b41d611bac95e13cfca131a",
     "settlement_token": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
     "settlement_token_symbol": "STRK",

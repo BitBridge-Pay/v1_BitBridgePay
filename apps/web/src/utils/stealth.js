@@ -111,18 +111,3 @@ export async function recoverStealthAddresses(
   return addresses;
 }
 
-/**
- * Encode a bech32 Bitcoin address as a felt252-compatible short string.
- *
- * felt252 short strings are limited to 31 ASCII bytes. Real bech32 addresses
- * are 42–62 chars, so this truncates. The full address is always recoverable
- * from (merchantStarknetAddress, contractAddress, paymentIndex).
- *
- * For production, update the contract to use ByteArray for btc_address.
- *
- * @param {string} address - Full bech32 Bitcoin address
- * @returns {string} Truncated to max 31 chars for felt252 storage
- */
-export function addressToFelt252(address) {
-  return address.slice(0, 31);
-}
