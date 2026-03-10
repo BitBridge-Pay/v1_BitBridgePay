@@ -1,16 +1,16 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Link used for New Request button
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLink, Plus } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
 import StatusBadge from "@/components/StatusBadge";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import type { PaymentStatus } from "@/lib/mockData";
 
 const PaymentHistory = () => {
   const { payments } = usePayments();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<string>("all");
 
   const filtered = filter === "all" ? payments : payments.filter((p) => p.status === filter);
@@ -62,8 +62,10 @@ const PaymentHistory = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.05 }}
               >
-                <Link to={`/payment/${p.id}`}>
-                  <Card className="gradient-card border-border transition-all hover:border-primary/20 hover:glow-primary">
+                  <Card
+                    className="gradient-card cursor-pointer border-border transition-all hover:border-primary/20 hover:glow-primary"
+                    onClick={() => navigate(`/payment/${p.id}`)}
+                  >
                     <CardContent className="flex items-center justify-between p-4">
                       <div className="flex items-center gap-4">
                         <div>
@@ -93,7 +95,6 @@ const PaymentHistory = () => {
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
               </motion.div>
             ))
           )}

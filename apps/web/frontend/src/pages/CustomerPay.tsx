@@ -2,27 +2,77 @@ import { useParams, Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Copy, ExternalLink, Check, Zap } from "lucide-react";
-import { usePayments } from "@/hooks/usePayments";
+import { Copy, ExternalLink, Check, Zap, Loader2 } from "lucide-react";
+import { useContract, decodePayment, btcFromSats } from "@/hooks/useContract";
 import StatusBadge from "@/components/StatusBadge";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import type { PaymentStatus } from "@/lib/mockData";
+
+const POLL_MS = 10_000;
+
+function chainStatus(raw: ReturnType<typeof decodePayment>): PaymentStatus {
+  if (raw.settled) return "settled";
+  if (raw.cancelled) return "expired";
+  if (raw.btc_block_height > 0n) return "confirming";
+  return "pending";
+}
+
+interface ChainPayment {
+  btcAddress: string;
+  amountBtc: string;
+  status: PaymentStatus;
+}
 
 const CustomerPay = () => {
   const { paymentId } = useParams<{ paymentId: string }>();
-  const { getPayment } = usePayments();
-  const payment = getPayment(paymentId || "");
+  const { readContract } = useContract();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
-  const [statusStep, setStatusStep] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [payment, setPayment] = useState<ChainPayment | null>(null);
 
-  // TODO: Poll relayer/contract for real payment status updates
   useEffect(() => {
-    if (!payment) return;
-    const step = payment.status === "pending" ? 0 : payment.status === "confirming" ? 1 : 2;
-    setStatusStep(step);
-  }, [payment]);
+    if (!paymentId) return;
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const raw = await readContract.get_payment(paymentId);
+        const decoded = decodePayment(raw);
+        if (cancelled) return;
+        if (!decoded.initialized) {
+          setPayment(null);
+        } else {
+          setPayment({
+            btcAddress: decoded.btc_address,
+            amountBtc: btcFromSats(decoded.required_btc_sats),
+            status: chainStatus(decoded),
+          });
+        }
+      } catch {
+        // keep retrying on network errors
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    poll();
+    const timer = setInterval(poll, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [paymentId, readContract]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!payment) {
     return (
@@ -31,7 +81,9 @@ const CustomerPay = () => {
           <CardContent className="p-8">
             <Zap className="mx-auto mb-4 h-8 w-8 text-primary" />
             <p className="font-display text-lg font-semibold">Payment not found</p>
-            <p className="mt-2 text-sm text-muted-foreground">This payment link may be invalid or expired.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This payment link may be invalid or expired.
+            </p>
             <Link to="/">
               <Button variant="outline" className="mt-4">Go to BitBridgePay</Button>
             </Link>
@@ -42,6 +94,8 @@ const CustomerPay = () => {
   }
 
   const btcUri = `bitcoin:${payment.btcAddress}?amount=${payment.amountBtc}`;
+  const statusStep =
+    payment.status === "pending" ? 0 : payment.status === "confirming" ? 1 : 2;
   const steps = ["Waiting for payment", "Confirming on Bitcoin", "Complete"];
 
   const copyAddress = () => {
@@ -75,7 +129,6 @@ const CustomerPay = () => {
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Send exactly</p>
               <p className="font-display text-4xl font-bold text-primary">{payment.amountBtc} BTC</p>
-              <p className="text-sm text-muted-foreground">(${payment.amountUsd.toFixed(2)} USD)</p>
             </div>
 
             {/* QR Code */}

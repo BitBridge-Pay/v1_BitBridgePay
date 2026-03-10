@@ -10,7 +10,7 @@ import { connect, disconnect as starknetKitDisconnect } from "starknetkit";
 import type { StarknetkitConnector } from "starknetkit";
 import type { AccountInterface } from "starknet";
 import { RpcProvider } from "starknet";
-import { RPC_URL, CHAIN_IDS } from "@/lib/contract";
+import { RPC_URL } from "@/lib/contract";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,6 +28,7 @@ interface WalletContextType {
   connect: () => Promise<void>;
   disconnect: () => void;
   network: NetworkName;
+  setNetwork: (n: NetworkName) => void;
   chainType: ChainType;
 }
 
@@ -47,8 +48,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connector, setConnector] = useState<StarknetkitConnector | null>(null);
 
-  // Currently hardcoded to Sepolia — extend when mainnet support is added.
-  const network: NetworkName = "sepolia";
+  const [network, setNetwork] = useState<NetworkName>("sepolia");
   const chainType: ChainType = "starknet";
 
   const provider = new RpcProvider({ nodeUrl: RPC_URL });
@@ -72,15 +72,21 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   );
 
   // On mount: try to reconnect silently if the user was previously connected.
+  // Wrapped in try/catch because starknetkit probes all injected extensions
+  // (including Polkadot.js) and non-Starknet wallets reject with UserRejectedRequestError.
   useEffect(() => {
     const tryReconnect = async () => {
-      const result = await connect({
-        modalMode: "neverAsk",
-        modalTheme: "dark",
-        dappName: "BitBridgePay",
-      });
-      if (result.connector && result.connectorData?.account) {
-        await resolveAccount(result.connector, result.connectorData.account);
+      try {
+        const result = await connect({
+          modalMode: "neverAsk",
+          modalTheme: "dark",
+          dappName: "BitBridgePay",
+        });
+        if (result.connector && result.connectorData?.account) {
+          await resolveAccount(result.connector, result.connectorData.account);
+        }
+      } catch {
+        // Non-Starknet extension rejected the probe — ignore, user was not connected.
       }
     };
     tryReconnect();
@@ -150,6 +156,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         connect: connectWallet,
         disconnect: disconnectWallet,
         network,
+        setNetwork,
         chainType,
       }}
     >

@@ -20,7 +20,7 @@ export const useContract = () => {
 
   // Read-only instance: always available, no wallet required.
   const readContract = useMemo(
-    () => new Contract(BITBRIDGE_ABI as unknown as object[], CONTRACT_ADDRESS, provider),
+    () => new Contract({ abi: BITBRIDGE_ABI, address: CONTRACT_ADDRESS, providerOrAccount: provider }),
     [provider]
   );
 
@@ -28,12 +28,12 @@ export const useContract = () => {
   const writeContract = useMemo(
     () =>
       account
-        ? new Contract(BITBRIDGE_ABI as unknown as object[], CONTRACT_ADDRESS, account)
+        ? new Contract({ abi: BITBRIDGE_ABI, address: CONTRACT_ADDRESS, providerOrAccount: account })
         : null,
     [account]
   );
 
-  return { readContract, writeContract };
+  return { provider, readContract, writeContract };
 };
 
 // ---------------------------------------------------------------------------

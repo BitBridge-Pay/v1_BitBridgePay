@@ -2,20 +2,62 @@ import { useParams, Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Copy, ExternalLink, Share2, ArrowLeft, Check } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
+import { useContract, decodePayment } from "@/hooks/useContract";
 import StatusBadge from "@/components/StatusBadge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import type { PaymentStatus } from "@/lib/mockData";
+
+const POLL_MS = 10_000;
+
+function chainStatus(raw: ReturnType<typeof decodePayment>): PaymentStatus {
+  if (raw.settled) return "settled";
+  if (raw.cancelled) return "expired";
+  if (raw.btc_block_height > 0n) return "confirming";
+  return "pending";
+}
 
 const PaymentDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { getPayment } = usePayments();
+  const { getPayment, updatePayment } = usePayments();
   const payment = getPayment(id || "");
+  const { readContract } = useContract();
   const { toast } = useToast();
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Poll the contract for live status.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const raw = await readContract.get_payment(id);
+        const decoded = decodePayment(raw);
+        if (!decoded.initialized || cancelled) return;
+        const newStatus = chainStatus(decoded);
+        updatePayment(id, {
+          status: newStatus,
+          ...(decoded.settled && !payment?.txHash
+            ? { settledAt: new Date() }
+            : {}),
+        });
+      } catch {
+        // ignore between polls
+      }
+    };
+
+    poll();
+    const timer = setInterval(poll, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, readContract]);
 
   if (!payment) {
     return (

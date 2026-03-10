@@ -1,5 +1,6 @@
 // BitBridgePay contract config: ABI, deployed addresses, and network constants.
 // The ABI is derived directly from the compiled Cairo contract.
+import type { Abi } from "starknet";
 
 export const DEPLOYED = {
   sepolia: {
@@ -31,7 +32,7 @@ export const RELAYER_URL = import.meta.env.VITE_RELAYER_URL as string;
 export const STRK_DECIMALS = 18n;
 
 // Full ABI from compiled bitbridge_contracts_BitBridgePay.contract_class.json
-export const BITBRIDGE_ABI = [
+export const BITBRIDGE_ABI: Abi = [
   {
     type: "impl",
     name: "BitBridgePayImpl",
@@ -203,7 +204,7 @@ export const BITBRIDGE_ABI = [
       { name: "PaymentCancelled", type: "bitbridge_contracts::BitBridgePay::PaymentCancelled", kind: "nested" },
     ],
   },
-] as const;
+];
 
 // TypeScript type for the on-chain Payment struct
 export interface OnChainPayment {
