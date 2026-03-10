@@ -11,8 +11,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { usePayments } from "@/hooks/usePayments";
 import { useContract } from "@/hooks/useContract";
 import { useToast } from "@/hooks/use-toast";
-import { RELAYER_URL, CONTRACT_ADDRESS, BITBRIDGE_ABI } from "@/lib/contract";
-import { CallData } from "starknet";
+import { RELAYER_URL } from "@/lib/contract";
 
 // ---------------------------------------------------------------------------
 // Per-merchant BTC address index — tracked in localStorage so each payment
@@ -32,7 +31,7 @@ const incrementIndex = (address: string): void => {
 
 const RequestPayment = () => {
   const navigate = useNavigate();
-  const { address, account, isConnected } = useWallet();
+  const { address, isConnected } = useWallet();
   const { addPayment } = usePayments();
   const { provider, writeContract } = useContract();
   const { toast } = useToast();
@@ -118,19 +117,14 @@ const RequestPayment = () => {
 
       // 5 — Call create_payment on-chain
       setStep("Submitting to Starknet…");
-      const calldata = CallData.compile({
-        merchant: address,
-        amount_settlement_units: amountSettlementUnits.toString(),
-        payment_id: paymentId,
-        btc_address: btcAddress,
-        required_btc_sats: requiredSats.toString(),
-        is_private: isPrivate,
-      });
-      const result = await account!.execute({
-        contractAddress: CONTRACT_ADDRESS,
-        entrypoint: "create_payment",
-        calldata,
-      });
+      const result = await writeContract.create_payment(
+        address,               // merchant: ContractAddress
+        amountSettlementUnits, // amount_settlement_units: u128
+        paymentId,             // payment_id: felt252
+        btcAddress,            // btc_address: ByteArray
+        requiredSats,          // required_btc_sats: u64
+        isPrivate              // is_private: bool
+      );
 
       // 6 — Wait for the transaction to be accepted on-chain
       setStep("Waiting for confirmation…");
