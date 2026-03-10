@@ -4,14 +4,55 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLink, Plus } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
+import { useContract, decodePayment } from "@/hooks/useContract";
 import StatusBadge from "@/components/StatusBadge";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import type { PaymentStatus } from "@/lib/mockData";
+
+const POLL_MS = 15_000;
+
+function chainStatus(raw: ReturnType<typeof decodePayment>): PaymentStatus {
+  if (raw.settled) return "settled";
+  if (raw.cancelled) return "expired";
+  if (raw.btc_block_height > 0n) return "confirming";
+  return "pending";
+}
 
 const PaymentHistory = () => {
-  const { payments } = usePayments();
+  const { payments, updatePayment } = usePayments();
+  const { readContract } = useContract();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<string>("all");
+
+  // Poll all non-settled payments for live status updates.
+  const pollAll = useCallback(async () => {
+    const pending = payments.filter(
+      (p) => p.status !== "settled" && p.status !== "expired"
+    );
+    for (const p of pending) {
+      try {
+        const raw = await readContract.get_payment(p.paymentId);
+        const decoded = decodePayment(raw);
+        if (!decoded.initialized) continue;
+        const newStatus = chainStatus(decoded);
+        if (newStatus !== p.status) {
+          updatePayment(p.paymentId, {
+            status: newStatus,
+            ...(decoded.settled ? { settledAt: new Date() } : {}),
+          });
+        }
+      } catch {
+        // payment may not exist on-chain — skip
+      }
+    }
+  }, [payments, readContract, updatePayment]);
+
+  useEffect(() => {
+    pollAll();
+    const timer = setInterval(pollAll, POLL_MS);
+    return () => clearInterval(timer);
+  }, [pollAll]);
 
   const filtered = filter === "all" ? payments : payments.filter((p) => p.status === filter);
 
@@ -83,7 +124,7 @@ const PaymentHistory = () => {
                         <StatusBadge status={p.status} />
                         {p.txHash && (
                           <a
-                            href={`https://sepolia.starkscan.co/tx/${p.txHash}`}
+                            href={`https://sepolia.voyager.online/tx/${p.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}

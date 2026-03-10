@@ -36,20 +36,17 @@ const PaymentDetail = () => {
     const poll = async () => {
       try {
         const raw = await readContract.get_payment(id);
-        console.log("[PaymentDetail] raw get_payment response:", JSON.stringify(raw, (_, v) => typeof v === "bigint" ? v.toString() : v, 2));
         const decoded = decodePayment(raw);
-        console.log("[PaymentDetail] decoded:", { initialized: decoded.initialized, settled: decoded.settled, cancelled: decoded.cancelled, btc_block_height: decoded.btc_block_height.toString() });
         if (!decoded.initialized || cancelled) return;
         const newStatus = chainStatus(decoded);
-        console.log("[PaymentDetail] newStatus:", newStatus);
         updatePayment(id, {
           status: newStatus,
           ...(decoded.settled && !payment?.txHash
             ? { settledAt: new Date() }
             : {}),
         });
-      } catch (err) {
-        console.warn("[PaymentDetail] poll error:", err);
+      } catch {
+        // payment may not exist on-chain yet — skip
       }
     };
 
