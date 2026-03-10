@@ -36,17 +36,20 @@ const PaymentDetail = () => {
     const poll = async () => {
       try {
         const raw = await readContract.get_payment(id);
+        console.log("[PaymentDetail] raw get_payment response:", JSON.stringify(raw, (_, v) => typeof v === "bigint" ? v.toString() : v, 2));
         const decoded = decodePayment(raw);
+        console.log("[PaymentDetail] decoded:", { initialized: decoded.initialized, settled: decoded.settled, cancelled: decoded.cancelled, btc_block_height: decoded.btc_block_height.toString() });
         if (!decoded.initialized || cancelled) return;
         const newStatus = chainStatus(decoded);
+        console.log("[PaymentDetail] newStatus:", newStatus);
         updatePayment(id, {
           status: newStatus,
           ...(decoded.settled && !payment?.txHash
             ? { settledAt: new Date() }
             : {}),
         });
-      } catch {
-        // ignore between polls
+      } catch (err) {
+        console.warn("[PaymentDetail] poll error:", err);
       }
     };
 
@@ -152,7 +155,7 @@ const PaymentDetail = () => {
                   Payment settled! {payment.settlementAsset} credited to your wallet.
                 </p>
                 <a
-                  href={`https://sepolia.starkscan.co/tx/${payment.txHash}`}
+                  href={`https://sepolia.voyager.online/tx/${payment.txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:underline"

@@ -64,8 +64,8 @@ export async function submitAttestation(
   // Amounts are generous upper bounds; actual consumption is much lower.
   const resourceBounds = {
     l1_gas:      { max_amount: "0x1388",  max_price_per_unit: "0x" + (l1PriceFri     * 5n).toString(16) },
-    l2_gas:      { max_amount: "0xF4240", max_price_per_unit: "0x" + (l2PriceFri     * 5n).toString(16) },
-    l1_data_gas: { max_amount: "0x100",   max_price_per_unit: "0x" + (l1DataPriceFri * 5n).toString(16) },
+    l2_gas:      { max_amount: "0x4C4B40", max_price_per_unit: "0x" + (l2PriceFri     * 5n).toString(16) },
+    l1_data_gas: { max_amount: "0x500",   max_price_per_unit: "0x" + (l1DataPriceFri * 5n).toString(16) },
   };
 
   let lastError;
@@ -80,6 +80,13 @@ export async function submitAttestation(
         btc_block_height: BigInt(blockHeight),
       });
       const result = await attestorAccount.execute(call, { resourceBounds });
+
+      // Wait for the transaction to be included and check execution status.
+      const receipt = await provider.waitForTransaction(result.transaction_hash);
+      if (receipt.execution_status === "REVERTED") {
+        throw new Error(`Transaction reverted: ${receipt.revert_reason || "unknown reason"}`);
+      }
+
       return { success: true, txHash: result.transaction_hash };
     } catch (err) {
       if (isAlreadySettled(err)) {

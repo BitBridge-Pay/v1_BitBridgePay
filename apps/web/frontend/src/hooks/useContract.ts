@@ -42,6 +42,18 @@ export const useContract = () => {
 
 export const decodePayment = (raw: unknown): OnChainPayment => {
   const r = raw as Record<string, unknown>;
+
+  // starknet.js v9 deserializes u256 as a single BigInt, not { low, high }
+  const txid = r.btc_txid;
+  let btc_txid: { low: bigint; high: bigint };
+  if (typeof txid === "bigint" || typeof txid === "number" || typeof txid === "string") {
+    const val = BigInt(String(txid));
+    btc_txid = { low: val & ((1n << 128n) - 1n), high: val >> 128n };
+  } else {
+    const obj = txid as Record<string, unknown>;
+    btc_txid = { low: BigInt(String(obj.low)), high: BigInt(String(obj.high)) };
+  }
+
   return {
     initialized: Boolean(r.initialized),
     merchant: String(r.merchant),
@@ -52,10 +64,7 @@ export const decodePayment = (raw: unknown): OnChainPayment => {
     expires_at: BigInt(String(r.expires_at)),
     btc_block_height: BigInt(String(r.btc_block_height)),
     cancelled: Boolean(r.cancelled),
-    btc_txid: {
-      low: BigInt(String((r.btc_txid as Record<string, unknown>).low)),
-      high: BigInt(String((r.btc_txid as Record<string, unknown>).high)),
-    },
+    btc_txid,
     is_private: Boolean(r.is_private),
   };
 };
