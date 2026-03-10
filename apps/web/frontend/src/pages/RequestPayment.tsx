@@ -118,12 +118,12 @@ const RequestPayment = () => {
       // 5 — Call create_payment on-chain
       setStep("Submitting to Starknet…");
       const result = await writeContract.create_payment(
-        address,               // merchant: ContractAddress
-        amountSettlementUnits, // amount_settlement_units: u128
-        paymentId,             // payment_id: felt252
-        btcAddress,            // btc_address: ByteArray (starknet.js encodes string)
-        requiredSats,          // required_btc_sats: u64
-        isPrivate              // is_private: bool
+        address,                              // merchant: ContractAddress
+        "0x" + amountSettlementUnits.toString(16), // amount_settlement_units: u128
+        paymentId,                            // payment_id: felt252
+        btcAddress,                           // btc_address: ByteArray
+        "0x" + requiredSats.toString(16),     // required_btc_sats: u64
+        isPrivate ? 1 : 0                     // is_private: bool
       );
 
       // 6 — Wait for the transaction to be accepted on-chain
