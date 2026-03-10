@@ -31,7 +31,7 @@ const incrementIndex = (address: string): void => {
 
 const RequestPayment = () => {
   const navigate = useNavigate();
-  const { address, isConnected } = useWallet();
+  const { address, account, isConnected } = useWallet();
   const { addPayment } = usePayments();
   const { provider, writeContract } = useContract();
   const { toast } = useToast();
@@ -117,14 +117,15 @@ const RequestPayment = () => {
 
       // 5 — Call create_payment on-chain
       setStep("Submitting to Starknet…");
-      const result = await writeContract.create_payment(
-        address,               // merchant: ContractAddress
-        amountSettlementUnits, // amount_settlement_units: u128
-        paymentId,             // payment_id: felt252
-        btcAddress,            // btc_address: ByteArray
-        requiredSats,          // required_btc_sats: u64
-        isPrivate              // is_private: bool
-      );
+      const call = writeContract!.populate("create_payment", {
+        merchant: address,
+        amount_settlement_units: amountSettlementUnits,
+        payment_id: paymentId,
+        btc_address: btcAddress,
+        required_btc_sats: requiredSats,
+        is_private: isPrivate,
+      });
+      const result = await account!.execute(call);
 
       // 6 — Wait for the transaction to be accepted on-chain
       setStep("Waiting for confirmation…");
