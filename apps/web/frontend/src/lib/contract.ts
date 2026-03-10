@@ -4,7 +4,7 @@ import type { Abi } from "starknet";
 
 export const DEPLOYED = {
   sepolia: {
-    BitBridgePay: "0x07e9431a66a95bf9befc65836723d34faddffc9dde9b75d63e7a7a91db3f883f",
+    BitBridgePay: "0x00fedead01727e507fe6f5471c6c44ad4f077389f6a0865b7ce92528be6c533c",
     oracle: "0x36031daa264c24520b11d93af622c848b2499b66b41d611bac95e13cfca131a",
     settlementToken: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
     settlementTokenSymbol: "STRK" as const,
