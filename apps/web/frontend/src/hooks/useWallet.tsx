@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
   ReactNode,
 } from "react";
 import { connect, disconnect as starknetKitDisconnect } from "starknetkit";
@@ -51,7 +52,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [network, setNetwork] = useState<NetworkName>("sepolia");
   const chainType: ChainType = "starknet";
 
-  const provider = new RpcProvider({ nodeUrl: RPC_URL });
+  const provider = useMemo(() => new RpcProvider({ nodeUrl: RPC_URL }), []);
 
   // Resolve account from connector and update state
   const resolveAccount = useCallback(
@@ -61,14 +62,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         setConnector(c);
         setAddress(addr);
         setAccount(acc);
-      } catch {
-        setAddress(null);
+      } catch (err) {
+        console.error("[useWallet] resolveAccount failed:", err);
+        // Keep the address visible even if account resolution fails —
+        // the user is still "connected" from the wallet's perspective.
+        setConnector(c);
+        setAddress(addr);
         setAccount(null);
-        setConnector(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [provider]
   );
 
   // On mount: try to reconnect silently if the user was previously connected.
