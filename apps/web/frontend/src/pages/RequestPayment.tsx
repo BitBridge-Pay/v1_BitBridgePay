@@ -123,7 +123,7 @@ const RequestPayment = () => {
         paymentId,                            // payment_id: felt252
         btcAddress,                           // btc_address: ByteArray
         "0x" + requiredSats.toString(16),     // required_btc_sats: u64
-        isPrivate ? 1 : 0                     // is_private: bool
+        isPrivate                                // is_private: bool
       );
 
       // 6 — Wait for the transaction to be accepted on-chain
