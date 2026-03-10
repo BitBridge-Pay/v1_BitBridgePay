@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Zap, Shield, Globe, Bitcoin, Wallet } from "lucide-react";
+import { ArrowRight, Zap, Shield, Globe, Bitcoin, Wallet, Lock } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { motion } from "framer-motion";
 
@@ -20,6 +20,11 @@ const features = [
     icon: Globe,
     title: "Cross-Chain Settlement",
     description: "Receive STRK or USDC on Starknet. More chains coming in v2.",
+  },
+  {
+    icon: Lock,
+    title: "Optional Private Payments",
+    description: "Use one-time stealth BTC addresses per payment. No address reuse — payments aren't linkable on-chain.",
   },
 ];
 
@@ -47,7 +52,9 @@ const Index = () => {
 
           <p className="mx-auto mb-10 max-w-xl text-lg text-muted-foreground">
             A trustless cross-chain payment gateway. Your customer pays in BTC,
-            you receive STRK or USDC — no intermediary, fully on-chain.
+            you receive STRK or USDC — no intermediary, fully on-chain.{" "}
+            <span className="text-foreground/90">Optional private payments</span>{" "}
+            use one-time stealth addresses so payments aren't linkable.
           </p>
 
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -76,7 +83,7 @@ const Index = () => {
 
       {/* Features */}
       <section className="border-t border-border bg-card/50 px-4 py-20">
-        <div className="container grid max-w-5xl gap-8 md:grid-cols-3">
+        <div className="container grid max-w-5xl gap-8 md:grid-cols-2 lg:grid-cols-4">
           {features.map((f, i) => (
             <motion.div
               key={f.title}
