@@ -1,0 +1,505 @@
+[
+  {
+    "type": "impl",
+    "name": "BitBridgePayImpl",
+    "interface_name": "bitbridge_contracts::IBitBridgePay"
+  },
+  {
+    "type": "struct",
+    "name": "core::byte_array::ByteArray",
+    "members": [
+      {
+        "name": "data",
+        "type": "core::array::Array::<core::bytes_31::bytes31>"
+      },
+      {
+        "name": "pending_word",
+        "type": "core::felt252"
+      },
+      {
+        "name": "pending_word_len",
+        "type": "core::integer::u32"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "core::bool",
+    "variants": [
+      {
+        "name": "False",
+        "type": "()"
+      },
+      {
+        "name": "True",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::integer::u256",
+    "members": [
+      {
+        "name": "low",
+        "type": "core::integer::u128"
+      },
+      {
+        "name": "high",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "bitbridge_contracts::BitBridgePay::Payment",
+    "members": [
+      {
+        "name": "initialized",
+        "type": "core::bool"
+      },
+      {
+        "name": "merchant",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "amount_settlement_units",
+        "type": "core::integer::u128"
+      },
+      {
+        "name": "btc_address",
+        "type": "core::byte_array::ByteArray"
+      },
+      {
+        "name": "required_btc_sats",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "settled",
+        "type": "core::bool"
+      },
+      {
+        "name": "expires_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "btc_block_height",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "cancelled",
+        "type": "core::bool"
+      },
+      {
+        "name": "btc_txid",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "is_private",
+        "type": "core::bool"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "bitbridge_contracts::IBitBridgePay",
+    "items": [
+      {
+        "type": "function",
+        "name": "create_payment",
+        "inputs": [
+          {
+            "name": "merchant",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount_settlement_units",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "payment_id",
+            "type": "core::felt252"
+          },
+          {
+            "name": "btc_address",
+            "type": "core::byte_array::ByteArray"
+          },
+          {
+            "name": "required_btc_sats",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "is_private",
+            "type": "core::bool"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "submit_attestation",
+        "inputs": [
+          {
+            "name": "payment_id",
+            "type": "core::felt252"
+          },
+          {
+            "name": "btc_txid",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "btc_amount_sats",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "btc_block_height",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "cancel_payment",
+        "inputs": [
+          {
+            "name": "payment_id",
+            "type": "core::felt252"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_payment",
+        "inputs": [
+          {
+            "name": "payment_id",
+            "type": "core::felt252"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "bitbridge_contracts::BitBridgePay::Payment"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "set_attestor",
+        "inputs": [
+          {
+            "name": "new_attestor",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_attestor",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "transfer_ownership",
+        "inputs": [
+          {
+            "name": "new_owner",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "accept_ownership",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_pending_owner",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "withdraw",
+        "inputs": [
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "recipient",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_oracle_address",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_settlement_token",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_settlement_pair_id",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::felt252"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_settlement_token_decimals",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::integer::u32"
+          }
+        ],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "attestor",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "oracle_address",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "owner",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "settlement_token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "settlement_pair_id",
+        "type": "core::felt252"
+      },
+      {
+        "name": "settlement_token_decimals",
+        "type": "core::integer::u32"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "bitbridge_contracts::BitBridgePay::PaymentCreated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "payment_id",
+        "type": "core::felt252",
+        "kind": "key"
+      },
+      {
+        "name": "merchant",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "btc_address",
+        "type": "core::byte_array::ByteArray",
+        "kind": "data"
+      },
+      {
+        "name": "required_btc_sats",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "amount_settlement_units",
+        "type": "core::integer::u128",
+        "kind": "data"
+      },
+      {
+        "name": "is_private",
+        "type": "core::bool",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "bitbridge_contracts::BitBridgePay::PaymentSettled",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "payment_id",
+        "type": "core::felt252",
+        "kind": "key"
+      },
+      {
+        "name": "merchant",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount_settlement_units",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "btc_txid",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "bitbridge_contracts::BitBridgePay::PaymentCancelled",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "payment_id",
+        "type": "core::felt252",
+        "kind": "key"
+      },
+      {
+        "name": "merchant",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "bitbridge_contracts::BitBridgePay::AttestorUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_attestor",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_attestor",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "bitbridge_contracts::BitBridgePay::OwnershipTransferProposed",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "current_owner",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "proposed_owner",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "bitbridge_contracts::BitBridgePay::OwnershipTransferred",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_owner",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_owner",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "bitbridge_contracts::BitBridgePay::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "PaymentCreated",
+        "type": "bitbridge_contracts::BitBridgePay::PaymentCreated",
+        "kind": "nested"
+      },
+      {
+        "name": "PaymentSettled",
+        "type": "bitbridge_contracts::BitBridgePay::PaymentSettled",
+        "kind": "nested"
+      },
+      {
+        "name": "PaymentCancelled",
+        "type": "bitbridge_contracts::BitBridgePay::PaymentCancelled",
+        "kind": "nested"
+      },
+      {
+        "name": "AttestorUpdated",
+        "type": "bitbridge_contracts::BitBridgePay::AttestorUpdated",
+        "kind": "nested"
+      },
+      {
+        "name": "OwnershipTransferProposed",
+        "type": "bitbridge_contracts::BitBridgePay::OwnershipTransferProposed",
+        "kind": "nested"
+      },
+      {
+        "name": "OwnershipTransferred",
+        "type": "bitbridge_contracts::BitBridgePay::OwnershipTransferred",
+        "kind": "nested"
+      }
+    ]
+  }
+]

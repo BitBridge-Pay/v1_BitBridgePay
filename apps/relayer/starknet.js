@@ -6,16 +6,10 @@ import { txidToU256 } from "./bitcoin.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Load the compiled ABI once at module startup — fail fast if the file is missing.
+// Load the ABI from a committed copy — avoids depending on Cairo build artifacts.
 const ABI = JSON.parse(
-  readFileSync(
-    join(
-      __dirname,
-      "../../packages/contracts/target/release/bitbridge_contracts_BitBridgePay.contract_class.json"
-    ),
-    "utf8"
-  )
-).abi;
+  readFileSync(join(__dirname, "abi.json"), "utf8")
+);
 
 const MAX_RETRIES = 3;
 const BACKOFF_BASE_MS = 1000;
