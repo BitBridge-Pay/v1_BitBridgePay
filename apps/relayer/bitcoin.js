@@ -64,7 +64,7 @@ export async function getConfirmedStats(address, config, minConfirmations) {
     }
     return totalSats;
   } catch (error) {
-    throw new Error(`Bitcoin API error: ${error.message}`);
+    throw new Error(`Bitcoin API error: ${error.message || error.code || String(error)}`);
   }
 }
 
@@ -81,8 +81,11 @@ export async function findConfirmedPayment(
   try {
     const { utxos, tipHeight } = await fetchBitcoinData(config, address);
     for (const utxo of utxos) {
-      if (!utxo.status.confirmed) continue;
-      const confirmations = tipHeight - utxo.status.block_height + 1;
+      // When minConfirmations === 0, accept mempool (unconfirmed) UTXOs immediately.
+      if (!utxo.status.confirmed && minConfirmations > 0) continue;
+      const confirmations = utxo.status.confirmed
+        ? tipHeight - utxo.status.block_height + 1
+        : 0;
       if (
         confirmations >= minConfirmations &&
         BigInt(utxo.value) >= requiredSats
@@ -90,13 +93,13 @@ export async function findConfirmedPayment(
         return {
           txid: utxo.txid,
           amountSats: BigInt(utxo.value),
-          blockHeight: utxo.status.block_height,
+          blockHeight: utxo.status.block_height ?? 0,
         };
       }
     }
     return null;
   } catch (error) {
-    throw new Error(`Bitcoin API error: ${error.message}`);
+    throw new Error(`Bitcoin API error: ${error.message || error.code || String(error)}`);
   }
 }
 

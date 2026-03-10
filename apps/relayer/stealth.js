@@ -16,7 +16,7 @@
  */
 
 import * as bitcoin from "bitcoinjs-lib";
-import BIP32Factory from "bip32";
+import { BIP32Factory } from "bip32";
 import * as ecc from "tiny-secp256k1";
 import { createHmac } from "crypto";
 

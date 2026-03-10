@@ -9,11 +9,11 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
-    "starknet": "^6.11.0",
     "axios": "^1.7.0",
-    "dotenv": "^16.0.0",
-    "bitcoinjs-lib": "^6.1.0",
     "bip32": "^4.0.0",
+    "bitcoinjs-lib": "^6.1.0",
+    "dotenv": "^16.0.0",
+    "starknet": "^7.1.0",
     "tiny-secp256k1": "^2.2.0"
   },
   "keywords": [],

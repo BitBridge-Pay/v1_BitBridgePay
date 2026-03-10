@@ -55,9 +55,24 @@ export async function submitAttestation(
   amountSats,
   blockHeight
 ) {
-  const { contractAddress, attestorAccount } = config;
+  const { contractAddress, attestorAccount, provider } = config;
   const txidU256 = txidToU256(txid);
   const contract = new Contract(ABI, contractAddress, attestorAccount);
+
+  // Fetch current gas prices from the latest block header.
+  // All max_price_per_unit values in v3 resourceBounds are denominated in fri.
+  const latestBlock = await provider.getBlock("latest");
+  const l1PriceFri     = BigInt(latestBlock.l1_gas_price.price_in_fri);
+  const l2PriceFri     = BigInt(latestBlock.l2_gas_price.price_in_fri);
+  const l1DataPriceFri = BigInt(latestBlock.l1_data_gas_price.price_in_fri);
+
+  // 5× buffer covers price spikes between fetch and inclusion.
+  // Amounts are generous upper bounds; actual consumption is much lower.
+  const resourceBounds = {
+    l1_gas:      { max_amount: "0x1388",  max_price_per_unit: "0x" + (l1PriceFri     * 5n).toString(16) },
+    l2_gas:      { max_amount: "0xF4240", max_price_per_unit: "0x" + (l2PriceFri     * 5n).toString(16) },
+    l1_data_gas: { max_amount: "0x100",   max_price_per_unit: "0x" + (l1DataPriceFri * 5n).toString(16) },
+  };
 
   let lastError;
 
@@ -70,7 +85,7 @@ export async function submitAttestation(
         btc_amount_sats: amountSats,
         btc_block_height: BigInt(blockHeight),
       });
-      const result = await attestorAccount.execute(call);
+      const result = await attestorAccount.execute(call, { resourceBounds });
       return { success: true, txHash: result.transaction_hash };
     } catch (err) {
       if (isAlreadySettled(err)) {

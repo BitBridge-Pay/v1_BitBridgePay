@@ -37,8 +37,11 @@ export function readEnv() {
   if (!stealthMasterSecret)  throw new Error("Missing STEALTH_MASTER_SECRET");
 
   // 3. Build the signer — private key is consumed here and never returned
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
-  const attestorAccount = new Account(provider, attestorAddress, attestorPrivateKey);
+  // blockIdentifier: "latest" — Alchemy Sepolia rejects "pending" for starknet_getNonce
+  const provider = new RpcProvider({ nodeUrl: rpcUrl, blockIdentifier: "latest" });
+  // Cairo version "1" + transaction version "0x3" forces V3 transactions.
+  // Starknet Sepolia v0.10 no longer accepts V1/V2 invoke transactions.
+  const attestorAccount = new Account(provider, attestorAddress, attestorPrivateKey, "1", "0x3");
 
   // 4. Return config — raw private keys are not exposed
   return {
