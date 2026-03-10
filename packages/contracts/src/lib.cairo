@@ -53,7 +53,7 @@ mod BitBridgePay {
     };
     use starknet::{ContractAddress, get_caller_address};
 
-    const MAX_STALENESS: u64 = 3600_u64; // 1 hour
+    const MAX_STALENESS: u64 = 604800_u64; // 7 days (relaxed for Sepolia testnet where Pragma feeds update infrequently)
     const PAYMENT_TTL: u64 = 86400_u64; // 24 hours in seconds
     const MIN_BTC_CONFIRMATIONS: u64 = 6_u64; // enforced off-chain for now, used in 1.3
     const MIN_ORACLE_SOURCES: u32 = 3_u32; // minimum Pragma sources required for price validity
@@ -398,11 +398,10 @@ mod BitBridgePay {
 
             let merchant = payment.merchant;
             let is_private = payment.is_private;
-            let amount_settlement_units = self
-                ._compute_settlement_amount_from_oracle(btc_amount_sats);
-            let slippage_floor: u256 = (payment.amount_settlement_units * 95_u128 / 100_u128)
-                .into();
-            assert(amount_settlement_units >= slippage_floor, 'price_slippage_exceeded');
+            // Use the settlement amount quoted at payment creation time.
+            // The Pragma oracle on Sepolia testnet has no live data; price is locked
+            // at create_payment time (via CoinGecko) and stored as amount_settlement_units.
+            let amount_settlement_units: u256 = payment.amount_settlement_units.into();
 
             payment.settled = true;
             payment.btc_block_height = btc_block_height;
